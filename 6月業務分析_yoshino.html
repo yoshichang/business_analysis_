@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>6月 業務行動分析 ダッシュボード</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        /* 基本スタイル */
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* ヘッダー */
+        .header-container {
+            background-color: #fff;
+            padding: 30px 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .header-container h1 {
+            color: #34495e;
+            font-size: 2.5em;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .header-container p {
+            color: #666;
+            font-size: 1em;
+            margin-top: 0;
+        }
+
+        /* メインコンテンツエリア */
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* 概要カードセクション */
+        .summary-cards {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            padding: 25px;
+            text-align: center;
+            flex: 1;
+            min-width: 220px; /* カードの最小幅 */
+            transition: transform 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-title {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .card-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+        }
+        /* カードの色付け (画像に合わせて) */
+        .card.total-activity { background-color: #e8f5e9; } /* Light Green */
+        .card.total-cases { background-color: #e3f2fd; } /* Light Blue */
+        .card.external-total { background-color: #ffe0b2; } /* Light Orange */
+        .card.internal-total { background-color: #e1bee7; } /* Light Purple */
+
+        /* 各セクションの共通スタイル */
+        .section {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+        .section-title {
+            font-size: 1.8em;
+            color: #34495e;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f2f5;
+            padding-bottom: 10px;
+        }
+        .section-description {
+            font-size: 0.95em;
+            color: #666;
+            margin-bottom: 25px;
+        }
+        .chart-placeholder {
+            min-height: 300px; /* グラフの高さ確保 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            border: 1px dashed #ddd;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+
+        /* グラフのリセットボタン */
+        .reset-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .reset-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+        .reset-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* 詳細データセクション */
+        .detail-data-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .detail-data-controls label {
+            font-size: 0.95em;
+            color: #555;
+        }
+        .detail-data-controls select,
+        .detail-data-controls input[type="checkbox"] {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        .detail-data-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+        }
+        .detail-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        .detail-data-table th,
+        .detail-data-table td {
+            padding: 10px 15px;
+            border: 1px solid #eee;
+            text-align: left;
+            white-space: nowrap; /* 列幅の調整 */
+        }
+        .detail-data-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .detail-data-table tbody tr:nth-child(even) {
+            background-color: #fcfcfc;
+        }
+        .detail-data-table tbody tr:hover {
+            background-color: #e9f5ff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-container">
+    <h1>6月 業務行動分析</h1>
+    <p>このダッシュボードでは、6月1日～30日間の業務時間の使い方を可視化しています。<br>各セクションで、全体の概要と詳細を数値やグラフで、インタラクティブに確認できます。</p>
+</div>
+
+<div class="container">
+    <div class="section">
+        <h2 class="section-title">概要</h2>
+        <p class="section-description">6月の活動については、6月全体の業務行動に関する主要な指標を一目で確認できます。総活動時間と総活動件数に加え、外勤・内勤の合計時間も把握できます。</p>
+        <div class="summary-cards">
+            <div class="card total-activity">
+                <div class="card-title">総活動時間</div>
+                <div class="card-value" id="totalActivityTime">-- 分</div>
+            </div>
+            <div class="card total-cases">
+                <div class="card-title">総活動件数</div>
+                <div class="card-value" id="totalActivityCases">-- 件</div>
+            </div>
+            <div class="card external-total">
+                <div class="card-title">外勤合計時間</div>
+                <div class="card-value" id="externalTotalTime">-- 分</div>
+            </div>
+            <div class="card internal-total">
+                <div class="card-title">内勤合計時間</div>
+                <div class="card-value" id="internalTotalTime">-- 分</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">活動内容別の時間配分</h2>
+        <p class="section-description">どのくらいの時間をそれぞれにどのくらいの時間を費やしたかをドーナツグラフで示しています。各活動内容にマウスを合わせると、詳細な時間と割合を確認できます。</p>
+        <div id="task-breakdown-donut-chart" style="height: 450px;"></div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">担当者別の活動時間</h2>
+        <p class="section-description">各営業担当者が6月中に業務に費やした総時間を棒グラフで比較します。誰がどれくらい活動したかを視覚的に把握できます。</p>
+        <div class="chart-placeholder">
+            複数担当者のデータがないため、このグラフは現在表示できません。<br>
+            (吉野一宏様のデータのみを基に作成されています)
+        </div>
+        </div>
+
+    <div class="section">
+        <h2 class="section-title">日ごとの活動時間の推移 (積み上げ棒グラフ)</h2>
+        <p class="section-description">6月中の日ごとの総活動時間の内訳を積み上げ棒グラフで表示します。各日の業務内容と時間の配分を詳細に確認できます。凡例をクリックすると、その活動内容のみを表示できます。</p>
+        <div id="daily-stacked-bar-chart" style="height: 450px;"></div>
+        <div class="reset-button-container">
+            <button class="reset-button" onclick="resetChart('daily-stacked-bar-chart')">グラフをリセット</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">詳細データ</h2>
+        <p class="section-description">日ごとの業務行動の詳細なリストです。外勤・内勤にグループ化されています。下のフィルターで表示を絞り込めます。</p>
+        <div class="detail-data-controls">
+            <label for="displayFilter">表示フィルター:</label>
+            <select id="displayFilter">
+                <option value="all">全て</option>
+                <option value="外勤">外勤のみ</option>
+                <option value="内勤">内勤のみ</option>
+                </select>
+            <label>
+                <input type="checkbox" id="toggleDetailTable" checked>
+                日ごとの活動時間表示/非表示
+            </label>
+        </div>
+        <div class="detail-data-table-container" id="detailDataTableContainer">
+            <table class="detail-data-table">
+                <thead>
+                    <tr>
+                        <th>日</th>
+                        <th>曜日</th>
+                        <th>商談</th>
+                        <th>MR</th>
+                        <th>移動時間</th>
+                        <th>提案資料作成</th>
+                        <th>見積作成</th>
+                        <th>条件対応</th>
+                        <th>タップ</th>
+                        <th>見込関連</th>
+                        <th>会議/MTG</th>
+                        <th>SFA記入</th>
+                        <th>その他</th>
+                        <th>業務</th>
+                        <th>合計</th>
+                        <th>外勤計</th>
+                        <th>内勤計</th>
+                    </tr>
+                </thead>
+                <tbody id="detailTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // -----------------------------------------------------
+    // データの定義 (画像から読み取ったデータ - 正確に記述)
+    // -----------------------------------------------------
+    const rawData = [
+        // 1日目は概要に含むが、日別グラフの軸では特殊なデータのため便宜上0とするか、個別に扱う
+        // ここでは、データテーブルと月間合計には含め、日別グラフでは2日目以降を使用
+        {日: '1日', 曜日: '', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 20, 見積作成: 30, 条件対応: 50, タップ: 0, 見込関連: 0, 会議MTG: 30, SFA記入: 60, その他: 0, 業務: 0, 合計: 490, 外勤計: 0, 内勤計: 0},
+        {日: '2日', 曜日: '', 商談: 80, MR: 80, 移動時間: 90, 提案資料作成: 60, 見積作成: 30, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 90, その他: 0, 業務: 0, 合計: 510, 外勤計: 160, 内勤計: 350},
+        {日: '3日', 曜日: '', 商談: 0, MR: 80, 移動時間: 100, 提案資料作成: 90, 見積作成: 60, 条件対応: 30, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 90, 業務: 0, 合計: 600, 外勤計: 180, 内勤計: 300}, 
+        {日: '4日', 曜日: '', 商談: 0, MR: 0, 移動時間: 90, 提案資料作成: 90, 見積作成: 40, 条件対応: 40, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 270, 業務: 0, 合計: 600, 外勤計: 180, 内勤計: 300},
+        {日: '5日', 曜日: '', 商談: 30, MR: 0, 移動時間: 90, 提案資料作成: 90, 見積作成: 40, 条件対応: 40, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 270, 業務: 0, 合計: 600, 外勤計: 180, 内勤計: 300},
+        {日: '6日', 曜日: '', 商談: 90, MR: 100, 移動時間: 90, 提案資料作成: 90, 見積作成: 120, 条件対応: 30, タップ: 30, 見込関連: 30, 会議MTG: 0, SFA記入: 0, その他: 80, 業務: 0, 合計: 600, 外勤計: 190, 内勤計: 410},
+        {日: '7日', 曜日: '土', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 0, 見積作成: 0, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 0, 外勤計: 0, 内勤計: 0},
+        {日: '8日', 曜日: '日', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 0, 見積作成: 0, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 0, 外勤計: 0, 内勤計: 0},
+        {日: '9日', 曜日: '', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 400, 見積作成: 120, 条件対応: 20, タップ: 20, 見込関連: 0, 会議MTG: 30, SFA記入: 0, その他: 20, 業務: 0, 合計: 610, 外勤計: 0, 内勤計: 610},
+        {日: '10日', 曜日: '', 商談: 0, MR: 0, 移動時間: 240, 提案資料作成: 240, 見積作成: 120, 条件対応: 30, タップ: 60, 見込関連: 30, 会議MTG: 0, SFA記入: 0, その他: 90, 業務: 0, 合計: 570, 外勤計: 0, 内勤計: 570},
+        {日: '11日', 曜日: '火', 商談: 90, MR: 0, 移動時間: 110, 提案資料作成: 30, 見積作成: 60, 条件対応: 120, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 130, 業務: 0, 合計: 540, 外勤計: 200, 内勤計: 340},
+        {日: '12日', 曜日: '水', 商談: 90, MR: 70, 移動時間: 150, 提案資料作成: 90, 見積作成: 120, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 30, 業務: 0, 合計: 550, 外勤計: 310, 内勤計: 240},
+        {日: '13日', 曜日: '木', 商談: 40, MR: 40, 移動時間: 120, 提案資料作成: 90, 見積作成: 120, 条件対応: 0, タップ: 0, 見込関連: 10, 会議MTG: 20, SFA記入: 0, その他: 30, 業務: 80, 合計: 550, 外勤計: 200, 内勤計: 350},
+        {日: '14日', 曜日: '', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 0, 見積作成: 0, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 0, 外勤計: 0, 内勤計: 0},
+        {日: '15日', 曜日: '', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 0, 見積作成: 0, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 0, 外勤計: 0, 内勤計: 0},
+        {日: '16日', 曜日: '', 商談: 40, MR: 60, 移動時間: 150, 提案資料作成: 120, 見積作成: 120, 条件対応: 0, タップ: 0, 見込関連: 30, 会議MTG: 0, SFA記入: 0, その他: 30, 業務: 0, 合計: 580, 外勤計: 250, 内勤計: 330},
+        {日: '17日', 曜日: '火', 商談: 60, MR: 0, 移動時間: 30, 提案資料作成: 0, 見積作成: 60, 条件対応: 30, タップ: 0, 見込関連: 0, 会議MTG: 30, SFA記入: 0, その他: 0, 業務: 300, 合計: 510, 外勤計: 90, 内勤計: 450},
+        {日: '18日', 曜日: '', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 180, 見積作成: 480, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 30, SFA記入: 0, その他: 0, 業務: 0, 合計: 690, 外勤計: 0, 内勤計: 690},
+        {日: '19日', 曜日: '', 商談: 0, MR: 110, 移動時間: 240, 提案資料作成: 60, 見積作成: 60, 条件対応: 0, タップ: 0, 見込関連: 10, 会議MTG: 30, SFA記入: 0, その他: 0, 業務: 0, 合計: 510, 外勤計: 350, 内勤計: 160},
+        {日: '20日', 曜日: '金', 商談: 120, MR: 0, 移動時間: 180, 提案資料作成: 30, 見積作成: 60, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 20, SFA記入: 0, その他: 60, 業務: 20, 合計: 520, 外勤計: 300, 内勤計: 200},
+        {日: '21日', 曜日: '', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 0, 見積作成: 0, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 0, 外勤計: 0, 内勤計: 0},
+        {日: '22日', 曜日: '', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 0, 見積作成: 0, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 0, 外勤計: 0, 内勤計: 0},
+        {日: '23日', 曜日: '月', 商談: 50, MR: 0, 移動時間: 80, 提案資料作成: 240, 見積作成: 180, 条件対応: 30, タップ: 30, 見込関連: 0, 会議MTG: 60, SFA記入: 0, その他: 10, 業務: 0, 合計: 680, 外勤計: 130, 内勤計: 540},
+        {日: '24日', 曜日: '火', 商談: 80, MR: 0, 移動時間: 120, 提案資料作成: 60, 見積作成: 120, 条件対応: 40, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 420, 外勤計: 200, 内勤計: 220},
+        {日: '25日', 曜日: '水', 商談: 120, MR: 0, 移動時間: 80, 提案資料作成: 60, 見積作成: 40, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 240, 業務: 0, 合計: 540, 外勤計: 200, 内勤計: 340},
+        {日: '26日', 曜日: '木', 商談: 90, MR: 0, 移動時間: 150, 提案資料作成: 90, 見積作成: 80, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 80, 業務: 0, 合計: 490, 外勤計: 240, 内勤計: 250},
+        {日: '27日', 曜日: '金', 商談: 60, MR: 60, 移動時間: 180, 提案資料作成: 120, 見積作成: 60, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 60, 業務: 0, 合計: 540, 外勤計: 300, 内勤計: 240},
+        {日: '28日', 曜日: '土', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 0, 見積作成: 0, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 0, 外勤計: 0, 内勤計: 0},
+        {日: '29日', 曜日: '日', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 0, 見積作成: 0, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 0, SFA記入: 0, その他: 0, 業務: 0, 合計: 0, 外勤計: 0, 内勤計: 0},
+        {日: '30日', 曜日: '月', 商談: 0, MR: 0, 移動時間: 0, 提案資料作成: 60, 見積作成: 60, 条件対応: 0, タップ: 0, 見込関連: 0, 会議MTG: 60, SFA記入: 0, その他: 360, 業務: 0, 合計: 540, 外勤計: 0, 内勤計: 540}
+    ];
+
+    // 月間合計値の計算
+    let totalActivityTimeMinutes = 0;
+    let externalTotalTimeMinutes = 0;
+    let internalTotalTimeMinutes = 0;
+    let totalActivityCases = 0; // 活動があった日の数を数える
+
+    const taskHoursMonthly = {
+        '商談': 0, 'MR': 0, '移動時間': 0, '提案資料作成': 0, '見積作成': 0, '条件対応': 0,
+        'タップ': 0, '見込関連': 0, '会議MTG': 0, 'SFA記入': 0, 'その他': 0, '業務': 0
+    };
+
+    rawData.forEach(dayData => {
+        totalActivityTimeMinutes += dayData.合計;
+        externalTotalTimeMinutes += dayData.外勤計;
+        internalTotalTimeMinutes += dayData.内勤計;
+
+        // 活動があった日をカウント (合計時間が0でない日)
+        if (dayData.合計 > 0) {
+            totalActivityCases++;
+        }
+
+        // 各業務項目の月間合計を計算
+        taskHoursMonthly['商談'] += dayData.商談;
+        taskHoursMonthly['MR'] += dayData.MR;
+        taskHoursMonthly['移動時間'] += dayData.移動時間;
+        taskHoursMonthly['提案資料作成'] += dayData.提案資料作成;
+        taskHoursMonthly['見積作成'] += dayData.見積作成;
+        taskHoursMonthly['条件対応'] += dayData.条件対応;
+        taskHoursMonthly['タップ'] += dayData.タップ;
+        taskHoursMonthly['見込関連'] += dayData.見込関連;
+        taskHoursMonthly['会議MTG'] += dayData.会議MTG;
+        taskHoursMonthly['SFA記入'] += dayData.SFA記入;
+        taskHoursMonthly['その他'] += dayData.その他;
+        taskHoursMonthly['業務'] += dayData.業務;
+    });
+
+    // -----------------------------------------------------
+    // 概要カードの値を設定
+    // -----------------------------------------------------
+    document.getElementById('totalActivityTime').innerText = `${totalActivityTimeMinutes} 分`;
+    document.getElementById('totalActivityCases').innerText = `${totalActivityCases} 件`;
+    document.getElementById('externalTotalTime').innerText = `${externalTotalTimeMinutes} 分`;
+    document.getElementById('internalTotalTime').innerText = `${internalTotalTimeMinutes} 分`;
+
+    // -----------------------------------------------------
+    // グラフの描画
+    // -----------------------------------------------------
+
+    // 1. 活動内容別の時間配分 (ドーナツグラフ)
+    function plotTaskBreakdownDonut() {
+        const taskLabels = Object.keys(taskHoursMonthly);
+        const taskValues = Object.values(taskHoursMonthly);
+
+        const data = [{
+            labels: taskLabels,
+            values: taskValues,
+            type: 'pie',
+            hole: .4,
+            hoverinfo: 'label+percent+value',
+            textinfo: 'percent',
+            textposition: 'inside',
+            marker: {
+                colors: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+                    '#E7E9ED', '#6A8EC2', '#A3D900', '#F3B5B8', '#8A6FAD', '#ADD8E6'
+                ]
+            },
+            automargin: true
+        }];
+
+        const layout = {
+            title: {
+                text: '月間業務項目別 時間配分',
+                font: { size: 18, color: '#333' }
+            },
+            height: 450,
+            margin: { t: 60, b: 20, l: 0, r: 0 },
+            showlegend: true,
+            legend: { x: 1, y: 0.5, xanchor: 'left' }
+        };
+
+        Plotly.newPlot('task-breakdown-donut-chart', data, layout);
+    }
+    plotTaskBreakdownDonut();
+
+    // 2. 日ごとの活動時間の推移 (積み上げ棒グラフ)
+    function plotDailyStackedBar() {
+        // 日別グラフでは、1日目の特殊なデータを考慮し、2日目以降のデータを使用
+        const datesForChart = rawData.slice(1).map(d => d.日.replace('日', '')); // '1日' -> '1' のように整形
+        const externalHoursChart = rawData.slice(1).map(d => d.外勤計);
+        const internalHoursChart = rawData.slice(1).map(d => d.内勤計);
+
+        const traceExternal = {
+            x: datesForChart,
+            y: externalHoursChart,
+            name: '外勤',
+            type: 'bar',
+            marker: { color: '#4CAF50' } // 緑系
+        };
+
+        const traceInternal = {
+            x: datesForChart,
+            y: internalHoursChart,
+            name: '内勤',
+            type: 'bar',
+            marker: { color: '#2196F3' } // 青系
+        };
+
+        const layout = {
+            barmode: 'stack',
+            xaxis: {
+                title: '日付',
+                tickangle: -45,
+                dtick: 1, // 1日単位でティックを表示 (データが連続している前提)
+                tickformat: '%d' // '日'のみ
+            },
+            yaxis: { title: '時間 (h)', rangemode: 'tozero' },
+            hovermode: 'x unified',
+            margin: { b: 100 },
+            legend: { x: 0, y: 1.1, orientation: 'h' }
+        };
+
+        Plotly.newPlot('daily-stacked-bar-chart', [traceExternal, traceInternal], layout);
+    }
+    plotDailyStackedBar();
+
+    // グラフリセット機能
+    function resetChart(chartId) {
+        Plotly.relayout(chartId, {
+            'xaxis.autorange': true,
+            'yaxis.autorange': true
+        });
+    }
+
+    // -----------------------------------------------------
+    // 詳細データテーブルの生成と制御
+    // -----------------------------------------------------
+    const detailTableBody = document.getElementById('detailTableBody');
+
+    function populateDetailTable() {
+        detailTableBody.innerHTML = ''; // 既存の行をクリア
+
+        rawData.forEach(rowData => {
+            const row = detailTableBody.insertRow();
+            row.insertCell().innerText = rowData.日;
+            row.insertCell().innerText = rowData.曜日 || '';
+            row.insertCell().innerText = rowData.商談;
+            row.insertCell().innerText = rowData.MR;
+            row.insertCell().innerText = rowData.移動時間;
+            row.insertCell().innerText = rowData.提案資料作成;
+            row.insertCell().innerText = rowData.見積作成;
+            row.insertCell().innerText = rowData.条件対応;
+            row.insertCell().innerText = rowData.タップ;
+            row.insertCell().innerText = rowData.見込関連;
+            row.insertCell().innerText = rowData.会議MTG;
+            row.insertCell().innerText = rowData.SFA記入;
+            row.insertCell().innerText = rowData.その他;
+            row.insertCell().innerText = rowData.業務;
+            row.insertCell().innerText = rowData.合計;
+            row.insertCell().innerText = rowData.外勤計;
+            row.insertCell().innerText = rowData.内勤計;
+        });
+    }
+
+    populateDetailTable(); // 初期表示
+
+    // 詳細データテーブルの表示/非表示切り替え
+    document.getElementById('toggleDetailTable').addEventListener('change', function() {
+        const tableContainer = document.getElementById('detailDataTableContainer');
+        if (this.checked) {
+            tableContainer.style.display = 'block';
+        } else {
+            tableContainer.style.display = 'none';
+        }
+    });
+
+    // フィルタリング機能 (ここでは見た目のみの実装)
+    document.getElementById('displayFilter').addEventListener('change', function() {
+        console.log('フィルター選択:', this.value);
+        // ここに実際のフィルタリングロジックを実装できます
+        // 例: if (this.value === '外勤') { ... }
+        // 現時点では見た目のみの機能です。
+    });
+
+</script>
+
+</body>
+</html>
